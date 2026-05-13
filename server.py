@@ -1,11 +1,12 @@
 import json
 import uvicorn
-from fastapi import FastAPI, Request
+from pydantic import BaseModel, Field
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from recommend_engine import recommend_stream
 
-app = FastAPI(title="AI Tools Recommendation API")
+app = FastAPI(title="AI Tools Nav - 智能助手 API")
 
 app.add_middleware(
     CORSMiddleware,
@@ -15,16 +16,13 @@ app.add_middleware(
 )
 
 
+class RecommendRequest(BaseModel):
+    query: str = Field(..., description="用户的自然语言需求描述", examples=["我想做一个视频"])
+
+
 @app.post("/api/recommend")
-async def recommend(request: Request):
-    try:
-        body = await request.json()
-    except Exception:
-        return StreamingResponse(
-            iter(["data: " + json.dumps({"token": "请求格式错误，请重试。"}, ensure_ascii=False) + "\n\n"]),
-            media_type="text/event-stream",
-        )
-    query = body.get("query", "")
+async def recommend(body: RecommendRequest):
+    query = body.query.strip()
     if not query:
         return StreamingResponse(
             iter(["data: " + json.dumps({"token": "请提供您的问题。"}, ensure_ascii=False) + "\n\n"]),
